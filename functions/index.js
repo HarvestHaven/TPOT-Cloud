@@ -2,12 +2,11 @@
 const functions = require('firebase-functions')
 const admin = require('firebase-admin')
 admin.initializeApp()
-const spawn = require('child-process-promise').spawn
 const path = require('path')
 const os = require('os')
 const fs = require('fs')
 
-const convertToHtml = require('../src/shared/utilities/converter').convertFile
+const convertToHtml = require('./converter').convertFile
 
 const inFolder = 'process';
 const outFolder = 'download';
@@ -52,11 +51,50 @@ function convert(file) {
 exports.convertDocx = functions.storage.object().onFinalize(async (object) => {
 
     const contentType = object.contentType
+    const fileBucket = object.bucket;
+    const filePath = object.name;
 
     console.log(`Content type of ${object.name}: `, contentType)
-
-    if (!object.name.endsWith('docx') || !contentType.startsWith('blob/')) {
+    //!object.name.endsWith('docx') || 
+    if (!contentType.includes('officedocument')) {
         return console.log(`${object.name} is not a docx file`)
     }
 
+    console.log(`Starting conversion of ${object.name}...`);
+
+    // Download file from bucket.
+    const bucket = admin.storage().bucket(fileBucket);
+    const fileName = path.basename(filePath);
+    const tempFilePath = path.join(os.tmpdir(), fileName);
+
+    const metadata = {
+        contentType: contentType,
+    };
+
+    await bucket.file(filePath)
+        .download({ destination: tempFilePath });
+
+    console.log('Docx downloaded locally to', tempFilePath);
+
+    // const file = fs.readFileSync(tempFilePath);
+    // console.log(`File ${file} had been red by Node!`, file);
+
+    var html = await convertToHtml(tempFilePath)
+    console.log('html:', html);
+
+    //Write html to temp
+    fs.writeFileSync(`${tempFilePath}.html`, html);
+    console.log(`Html created at ${tempFilePath}.html`);
+
+    // const htmlFileName = `html_${fileName}`;
+    // const htmlFilePath = path.join(path.dirname(filePath), htmlFileName);
+
+    // //Re-upload after conversion
+    // await bucket.upload(tempFilePath, {
+    //     destination: htmlFilePath,
+    //     metadata: metadata
+    // })
+
+    // //Deletes temp file after conversion
+    // return fs.unlinkSync(tempFilePath);
 })

@@ -12,8 +12,19 @@
     "node": "8"
   },
   "dependencies": {
+    "child-process-promise": "^2.2.1",
+    "create-node": "^2.0.3",
+    "domwalk": "^1.1.0",
+    "file2html": "^0.2.0",
+    "file2html-ooxml": "^0.2.2",
+    "filereader": "^0.10.3",
     "firebase-admin": "^8.6.0",
-    "firebase-functions": "^3.3.0"
+    "firebase-functions": "^3.3.0",
+    "jquery": "^3.4.1",
+    "mammoth-colors": "^1.0.2",
+    "read-blob": "^1.1.0",
+    "request-promise": "^4.2.5",
+    "stream-to-blob": "^2.0.0"
   },
   "devDependencies": {
     "firebase-functions-test": "^0.1.6"
