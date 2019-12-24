@@ -13,76 +13,35 @@ const mammoth = require('mammoth-colors')
 // Utilities
 const createNode = require('create-node')
 const walk = require('domwalk')
-// const FileReader = require('filereader').FileReader
-var FileReader = require('filereader'),
-    reader = new FileReader();
 
 // This is only used for parentUntil (just write a quick utility, It is expensive to import JQuery this way)
 // const $ = window.jQuery = require('jquery')
 const getParentsUntil = require('./jQueryHelpers');
 
-// Error: doesn't recognize Blob class (internally).  Borked.
-// async function loadAsBlob(fileName) {
-//     const stream = fs.createReadStream(fileName)
-//     console.log('Stream ok?', !!stream, stream)
-//     const blob = await streamToBlob(stream)
-//     console.log('Blob ok?', !!blob, blob)
+async function convertFile(buffer, filePath = null) {
 
-//     return blo;
-// }
+    let initialHtml = await convertFile2Html(buffer).catch(console.error)
+    console.log('pre-mammoth conversion success? ', !!initialHtml)
 
-async function convertFile(fileName) {
+    let mammothHtml = await convertMammoth(buffer).catch(console.error)
+    // let mammothHtml = await convertMammothFromFile(filePath)
 
-    // console.log(`Attempting to read blob/file ${fileName}`);
+    if (!mammothHtml)
+        throw new Error('No html came back from Mammoth!')
 
-    /** Using stream to blob */
-    // const blob = await loadAsBlob(fileName)
-
-    // var blob;  // Not working.  Blob not defined (in library....AGAIN!!)
-    // readBlob(blob, fileName, function (error, dataurl) {
-    //     if (error) throw error;
-
-    //     console.log('Worked!', dataurl);
-    //     console.log('blob:', blob)
-    // })
-
-    // var text = reader.readAsText(fileName);
-    // console.log('text: ', text);
-
-    // return new Promise((resolve, reject) => {
-
-    // console.log('Attempting to read blob as array buffer...')
-    // reader.readAsArrayBuffer(blob);
-
-    // fs.open(fileName);
-
-    console.log(`Attempting to read file '${fileName}' as arrayBuffer`);
-
-    var buffer = fs.readFileSync(fileName)
-    console.log('arraybuffer: ', buffer);
-
-    // reader.onload = async function () {
-    // var raw = reader.result;
-    //            console.log('raw', raw);
-
-    // let buffer = Buffer.from(raw, 'utf-8');
-    //            console.log('buffer', buffer);
-
-    let dataFile2Html = await convertFile2Html(buffer)
-    console.log('pre-mammoth conversion: ', dataFile2Html);
-    let dataMammoth = await convertMammoth(buffer)
+    console.log(mammothHtml);
 
     // // Bake Down CSS to File2Html Tag Data
-    dataFile2Html = await bakeCssToInlineStyles(dataFile2Html.css, dataFile2Html.html)
+    initialHtml = await bakeCssToInlineStyles(initialHtml.css, initialHtml.html).catch(console.error)
 
     // // Flatten Data
-    let convertedHTML = await flattenStyles(dataMammoth, dataFile2Html)
+    let finalHTML = await flattenStyles(mammothHtml, initialHtml).catch(console.error)
 
     // Send Data back to Store as resolved promise data
-    console.log('Conversion complete!');
-    // resolve(convertedHTML)
-    // }
-    // });
+    if (finalHTML) {
+        console.log('Conversion complete!');
+        resolve(finalHTML)
+    }
 }
 
 ///////////////////////////////////////////////////
@@ -137,17 +96,39 @@ const mammothOptions = {
 
 const convertMammoth = async (buffer) => {
 
-    console.log('mammoth options: ', mammothOptions);
-    const data = await mammoth.convertToHtml({
+    console.log('mammoth options: ', mammothOptions, buffer);
+    const html = await mammoth.convertToHtml({
         arrayBuffer: buffer
     }, mammothOptions)
+        .catch(console.error)
+
+    if (!html)
+        throw new Error('Mammoth did not produce any html!')
+
+    console.info('Now, carraige returns');
 
     // : Fix Carraige Returns
-    let sanitizedHTML = data.value.replace(/[\<]+[br]+[\s]?[\/]+[\>]+[\s]?[\<]+[br]+[\s]?[\/]+[\>]/g, '<p/><p>')
+    let sanitizedHTML = html.value.replace(/[\<]+[br]+[\s]?[\/]+[\>]+[\s]?[\<]+[br]+[\s]?[\/]+[\>]/g, '<p/><p>')
+    console.log('sanitized HTML: ', sanitizedHTML);
     // Return Result
     return sanitizedHTML
 
 }
+
+const convertMammothFromFile = async (filePath) => {
+    console.log(`Mammoth running conversion of ${filePath} to html...`);
+    const html = await mammoth.convertToHtml({ path: filePath }, mammothOptions)
+    // .then(function (result) {
+    //     let html = result.value
+    //     console.log('Mammoth made html? ', !!html);
+    //     let messages = result.messages
+    //     messages && console.log('Messages from mammoth:', messages)
+    // })
+    // .done()
+    console.log("yay, html!", html);
+    return html;
+}
+
 ///////////////////////////////////////////////////
 //            CSS TO INLINE STYLES            //
 ///////////////////////////////////////////////////
