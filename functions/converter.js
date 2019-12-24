@@ -9,6 +9,8 @@ const OOXMLReader = require('file2html-ooxml').default
 const fs = require('fs')
 const path = require('path')
 const { dirname, basename } = path
+const util = require('util')
+// const exec = util.promisify(require('child_process').exec)
 const { exec } = require('child_process');
 
 // Mammoth
@@ -18,18 +20,18 @@ const mammoth = require('mammoth-colors')
 const createNode = require('create-node')
 const walk = require('domwalk')
 
-// This is only used for parentUntil (just write a quick utility, It is expensive to import JQuery this way)
-// const $ = window.jQuery = require('jquery')
 const getParentsUntil = require('./jQueryHelpers');
 
 async function convertFile(buffer, filePath = null) {
 
     if (!filePath) throw Error('A file path was not specified!')
 
-    let initialHtml = await convertFile2Html(buffer).catch(console.error)
+    let initialHtml = await convertFile2Html(buffer)
+        .catch(console.error)
     if (!initialHtml) throw new Error('No html came back from File2Html!')
 
     let mammothHtml = await convertWithMammoth_FromCLI(filePath)
+        .catch(console.error)
     if (!mammothHtml) throw new Error('No html came back from Mammoth!')
 
     // mammothHtml = sanitize(mammothHtml)
@@ -100,34 +102,50 @@ const sanitize = (html) => html.value.replace(/[\<]+[br]+[\s]?[\/]+[\>]+[\s]?[\<
 const convertWithMammoth_FromCLI = async (filePath) => {
 
     const styleFile = 'stylemap.txt'
-    // console.info(`Hello, I'm looking a file by the name of ${filePath}, have you seen it?`);
-
     let currentDirectory = dirname(filePath);
     console.log(`Directory for CLI work: ${currentDirectory}`);
 
     let fileName = basename(filePath)
-    // console.log('fileName:', fileName)
     let htmlFileName = fileName.replace("docx", "html")
-    // console.log(htmlFileName);
     let htmlWritePath = path.join(currentDirectory, htmlFileName);
-    // console.log(htmlWritePath);
     let stylePath = path.join(currentDirectory, styleFile)
-    // console.log('styles:', stylePath);
 
     // Write the style map down.
-    fs.writeFileSync(stylePath, mammothOptions.styleMap.toString())
-    console.log(`Wrote down styles to ${stylePath}!`);
-
-    // Convert using Linux bash CLI & mammoth npm package.
-    exec(`mammoth ${filePath} --style-map ${stylePath} > ${htmlWritePath}`)
-    console.info(`Html saved to: ${htmlWritePath}`)
-
-    let html = fs.readFileSync(htmlWritePath, { encoding: 'utf-8' }, (error, data) => {
-        if (error) throw error
-        console.log('data: ', data);
+    await fs.writeFile(stylePath, mammothOptions.styleMap.toString(), () => {
+        console.log(`Wrote down styles to ${stylePath}!`);
     })
 
-    return html;
+    let mammothHtml = null
+
+    // Convert using Linux bash CLI & mammoth npm package.    
+    let command = `mammoth ${filePath} --style-map ${stylePath} > ${htmlWritePath}`
+    await runCommand(command).catch(console.error)
+
+    mammothHtml = fs.readFileSync(htmlWritePath, { encoding: 'utf-8' }, (error, data) => {
+        if (error) throw error
+    })
+
+    //Cleanup temp file
+    fs.unlinkSync(htmlWritePath)
+    
+    return mammothHtml;
+}
+
+/**
+ * Executes a shell command and return it as a Promise.
+ * @param shellCommand {string}
+ * @return {Promise<string>}
+ */
+function runCommand(shellCommand) {
+    return new Promise((resolve, reject) => {
+        exec(shellCommand, (error, stdout, stderr) => {
+            // if (error) {
+            //     console.warn(error);
+            // }
+            // resolve(stdout ? stdout : stderr);
+            resolve(true)
+        });
+    });
 }
 
 ///////////////////////////////////////////////////
@@ -240,12 +258,6 @@ const flattenStyles = async (baseDom, augDom) => {
             icingArray.push(icingNode) // Push icing reference
         }
     });
-
-    // Print Trees and Arrays
-    //    console.log("Cake Tree", cake)
-    //    console.log("Cake Array", cakeArray)
-    //    console.log("Icing Tree", icing)
-    //    console.log("Icing Array", icingArray)
 
     // Ignore Parent Divs for cake and icing
     cakeArray = cakeArray.slice(1)
