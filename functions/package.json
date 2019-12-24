@@ -5,6 +5,7 @@
     "serve": "firebase serve --only functions",
     "shell": "firebase functions:shell",
     "start": "npm run shell",
+    "test": "mocha",
     "deploy": "firebase deploy --only functions",
     "logs": "firebase functions:log"
   },
