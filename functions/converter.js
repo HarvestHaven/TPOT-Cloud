@@ -1,15 +1,15 @@
 // 'use strict';
 
+// Injects the 'window' into 
+require('browser-env')()
+
 // File2Html
 const file2html = require('file2html')
 const OOXMLReader = require('file2html-ooxml').default
-const streamToBlob = require('stream-to-blob')
 const fs = require('fs')
 const path = require('path')
 const { dirname, basename } = path
-const readBlob = require('read-blob')
 const { exec } = require('child_process');
-
 
 // Mammoth
 const mammoth = require('mammoth-colors')
@@ -24,28 +24,29 @@ const getParentsUntil = require('./jQueryHelpers');
 
 async function convertFile(buffer, filePath = null) {
 
+    if (!filePath) throw Error('A file path was not specified!')
+
     let initialHtml = await convertFile2Html(buffer).catch(console.error)
-    console.log('pre-mammoth conversion success? ', !!initialHtml)
+    if (!initialHtml) throw new Error('No html came back from File2Html!')
 
-    // let mammothHtml = await convertMammoth(buffer).catch(console.error)
-    // let mammothHtml = await convertMammothFromFile(filePath)
     let mammothHtml = await convertWithMammoth_FromCLI(filePath)
+    if (!mammothHtml) throw new Error('No html came back from Mammoth!')
 
-    if (!mammothHtml)
-        throw new Error('No html came back from Mammoth!')
+    // mammothHtml = sanitize(mammothHtml)
 
-    console.log(mammothHtml);
-
-    // // Bake Down CSS to File2Html Tag Data
+    /* Bake Down CSS to File2Html Tag Data */
     initialHtml = await bakeCssToInlineStyles(initialHtml.css, initialHtml.html).catch(console.error)
 
-    // // Flatten Data
+    /* Flatten Data */
     let finalHTML = await flattenStyles(mammothHtml, initialHtml).catch(console.error)
 
-    // Send Data back to Store as resolved promise data
+    /* Send Data back to Store as resolved promise data */
     if (finalHTML) {
-        console.log('Conversion complete!');
-        resolve(finalHTML)
+        console.log('Conversion complete!')
+        let currentDirectory = dirname(filePath)
+        let styledHtmlPath = path.join(currentDirectory, basename(filePath).replace('docx', 'html'))
+        fs.writeFileSync(styledHtmlPath, finalHTML)
+        console.info(`Final result saved to ${styledHtmlPath}`)
     }
 }
 
@@ -87,57 +88,15 @@ const mammothOptions = {
         "i => em",
         "u => ins",
         "strike => del",
-    ],
-    // convertImage: mammoth.images.imgElement(function (image) {
-    //     return image.read("base64").then(function (imageBuffer) {
-    //         return {
-    //             src: "data:" + image.contentType + ";base64," + imageBuffer,
-    //             class: "image",
-    //             style: "max-width: 600px; max-height: 350px; position: relative; left: 50%; transform: translateX(-50%);"
-    //         };
-    //     });
-    // })
+    ]
 };
 
-
-const convertMammoth = async (buffer) => {
-
-    console.log('mammoth options: ', mammothOptions, buffer);
-    const html = await mammoth.convertToHtml({
-        arrayBuffer: buffer
-    }, mammothOptions)
-        .catch(console.error)
-
-    if (!html)
-        throw new Error('Mammoth did not produce any html!')
-
-    console.info('Now, carraige returns');
-    return sanitize(html);
-}
-
-// : Fix Carraige Returns
+/* Fix Carraige Returns */
 const sanitize = (html) => html.value.replace(/[\<]+[br]+[\s]?[\/]+[\>]+[\s]?[\<]+[br]+[\s]?[\/]+[\>]/g, '<p/><p>')
-
-// const convertMammothFromFile = async (filePath) => {
-//     console.log(`Mammoth running conversion of ${filePath} to html...`);
-//     const html = await mammoth.convertToHtml({ path: filePath }, mammothOptions)
-//     // .then(function (result) {
-//     //     let html = result.value
-//     //     console.log('Mammoth made html? ', !!html);
-//     //     let messages = result.messages
-//     //     messages && console.log('Messages from mammoth:', messages)
-//     // })
-//     // .done()
-//     console.log("yay, html!", html);
-//     return html;
-// }
-
-
 
 /**
  * Convert file from local file system's CLI (must be Linux, we don't do Windows [ew]) 
  */
-
 const convertWithMammoth_FromCLI = async (filePath) => {
 
     const styleFile = 'stylemap.txt'
@@ -155,30 +114,21 @@ const convertWithMammoth_FromCLI = async (filePath) => {
     let stylePath = path.join(currentDirectory, styleFile)
     // console.log('styles:', stylePath);
 
-    // Check the file exists before converting.
-    await fs.access(filePath, fs.constants.F_OK, error => {
-        if (error) throw error
-    })
-
     // Write the style map down.
-    await fs.writeFile(stylePath, mammothOptions.styleMap.toString(), error => {
-        if (error) throw error
-    })
+    fs.writeFileSync(stylePath, mammothOptions.styleMap.toString())
+    console.log(`Wrote down styles to ${stylePath}!`);
 
     // Convert using Linux bash CLI & mammoth npm package.
-    await exec(`mammoth ${filePath}  > ${htmlWritePath}`, (error, stdout, stderr) => {
+    exec(`mammoth ${filePath} --style-map ${stylePath} > ${htmlWritePath}`)
+    console.info(`Html saved to: ${htmlWritePath}`)
+
+    let html = fs.readFileSync(htmlWritePath, { encoding: 'utf-8' }, (error, data) => {
         if (error) throw error
-        // the *entire* stdout and stderr (buffered)
-        // console.log(`stdout: ${stdout}`);
-        // console.log(`stderr: ${stderr}`);
-    });
+        console.log('data: ', data);
+    })
 
-    // let html = await fs.readFile(htmlWritePath)
-    // console.log('Finally, some mammoth steak: ' + html);
-
+    return html;
 }
-
-
 
 ///////////////////////////////////////////////////
 //            CSS TO INLINE STYLES            //
@@ -427,21 +377,7 @@ const flattenStyles = async (baseDom, augDom) => {
     function createHighlights(highlights) {
         highlights.forEach(icingNode => {
 
-            // let $ = document.getElementById('');
-            // Get Target Element and Index
-
-            //            console.log('icing node parent', icingNode.parentElement)
-            //            console.log('old icing node parent', $(icingNode.parentElement))
-
-            // $('#cat')[0].children
-            // element.children
-
             let blockChildren = getParentsUntil(icingNode.parentElement, "div")[0].children;
-            // let blockChildren2 = $(icingNode.parentElement).parentsUntil("div").prevObject[0].children
-            //TODO: figure out why, even though blockChildren 1 and 2 are identical, the targetElements is undefined at line 403
-            //            console.log('until result', blockChildren);
-            //            console.log('old until result', blockChildren2);
-            // blockChildren = blockChildren2
 
             let parentChildren = []
             for (let index = 0; index < blockChildren.length; index++) {
@@ -451,13 +387,11 @@ const flattenStyles = async (baseDom, augDom) => {
                 })
             }
 
-            //            console.log(parentChildren);
 
             let targetElements = parentChildren.filter(child => {
                 return icingNode.textContent === child.element.textContent
             })
 
-            //            console.log(targetElements);
 
             let targetElementIndex = targetElements[0].index
             let targetElement = icingNode.parentElement.children[targetElementIndex]
