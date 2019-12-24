@@ -5,7 +5,11 @@ const file2html = require('file2html')
 const OOXMLReader = require('file2html-ooxml').default
 const streamToBlob = require('stream-to-blob')
 const fs = require('fs')
+const path = require('path')
+const { dirname, basename } = path
 const readBlob = require('read-blob')
+const { exec } = require('child_process');
+
 
 // Mammoth
 const mammoth = require('mammoth-colors')
@@ -23,8 +27,9 @@ async function convertFile(buffer, filePath = null) {
     let initialHtml = await convertFile2Html(buffer).catch(console.error)
     console.log('pre-mammoth conversion success? ', !!initialHtml)
 
-    let mammothHtml = await convertMammoth(buffer).catch(console.error)
+    // let mammothHtml = await convertMammoth(buffer).catch(console.error)
     // let mammothHtml = await convertMammothFromFile(filePath)
+    let mammothHtml = await convertWithMammoth_FromCLI(filePath)
 
     if (!mammothHtml)
         throw new Error('No html came back from Mammoth!')
@@ -43,6 +48,7 @@ async function convertFile(buffer, filePath = null) {
         resolve(finalHTML)
     }
 }
+
 
 ///////////////////////////////////////////////////
 //         FILE 2 HMTL CONVERSION        //
@@ -106,28 +112,73 @@ const convertMammoth = async (buffer) => {
         throw new Error('Mammoth did not produce any html!')
 
     console.info('Now, carraige returns');
+    return sanitize(html);
+}
 
-    // : Fix Carraige Returns
-    let sanitizedHTML = html.value.replace(/[\<]+[br]+[\s]?[\/]+[\>]+[\s]?[\<]+[br]+[\s]?[\/]+[\>]/g, '<p/><p>')
-    console.log('sanitized HTML: ', sanitizedHTML);
-    // Return Result
-    return sanitizedHTML
+// : Fix Carraige Returns
+const sanitize = (html) => html.value.replace(/[\<]+[br]+[\s]?[\/]+[\>]+[\s]?[\<]+[br]+[\s]?[\/]+[\>]/g, '<p/><p>')
+
+// const convertMammothFromFile = async (filePath) => {
+//     console.log(`Mammoth running conversion of ${filePath} to html...`);
+//     const html = await mammoth.convertToHtml({ path: filePath }, mammothOptions)
+//     // .then(function (result) {
+//     //     let html = result.value
+//     //     console.log('Mammoth made html? ', !!html);
+//     //     let messages = result.messages
+//     //     messages && console.log('Messages from mammoth:', messages)
+//     // })
+//     // .done()
+//     console.log("yay, html!", html);
+//     return html;
+// }
+
+
+
+/**
+ * Convert file from local file system's CLI (must be Linux, we don't do Windows [ew]) 
+ */
+
+const convertWithMammoth_FromCLI = async (filePath) => {
+
+    const styleFile = 'stylemap.txt'
+    // console.info(`Hello, I'm looking a file by the name of ${filePath}, have you seen it?`);
+
+    let currentDirectory = dirname(filePath);
+    console.log(`Directory for CLI work: ${currentDirectory}`);
+
+    let fileName = basename(filePath)
+    // console.log('fileName:', fileName)
+    let htmlFileName = fileName.replace("docx", "html")
+    // console.log(htmlFileName);
+    let htmlWritePath = path.join(currentDirectory, htmlFileName);
+    // console.log(htmlWritePath);
+    let stylePath = path.join(currentDirectory, styleFile)
+    // console.log('styles:', stylePath);
+
+    // Check the file exists before converting.
+    await fs.access(filePath, fs.constants.F_OK, error => {
+        if (error) throw error
+    })
+
+    // Write the style map down.
+    await fs.writeFile(stylePath, mammothOptions.styleMap.toString(), error => {
+        if (error) throw error
+    })
+
+    // Convert using Linux bash CLI & mammoth npm package.
+    await exec(`mammoth ${filePath}  > ${htmlWritePath}`, (error, stdout, stderr) => {
+        if (error) throw error
+        // the *entire* stdout and stderr (buffered)
+        // console.log(`stdout: ${stdout}`);
+        // console.log(`stderr: ${stderr}`);
+    });
+
+    // let html = await fs.readFile(htmlWritePath)
+    // console.log('Finally, some mammoth steak: ' + html);
 
 }
 
-const convertMammothFromFile = async (filePath) => {
-    console.log(`Mammoth running conversion of ${filePath} to html...`);
-    const html = await mammoth.convertToHtml({ path: filePath }, mammothOptions)
-    // .then(function (result) {
-    //     let html = result.value
-    //     console.log('Mammoth made html? ', !!html);
-    //     let messages = result.messages
-    //     messages && console.log('Messages from mammoth:', messages)
-    // })
-    // .done()
-    console.log("yay, html!", html);
-    return html;
-}
+
 
 ///////////////////////////////////////////////////
 //            CSS TO INLINE STYLES            //
