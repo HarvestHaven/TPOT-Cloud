@@ -7,9 +7,7 @@ const os = require('os')
 const fs = require('fs')
 
 const convertToHtml = require('./converter').convertFile
-
-const inFolder = 'process';
-const outFolder = 'download';
+const outFolder = 'ready';
 const checkoutFolder = 'checkout';
 
 /**
@@ -20,7 +18,7 @@ function upload(file) {
     return firebase
         .storage()
         .ref()
-        .child(`{inFolder}/${fileName}`)
+        .child(`${checkoutFolder}/${fileName}`)
         .put(file)
         .then(snapshot => console.log(!!snapshot ? "upload success" : "upload failed"))
 }
@@ -29,72 +27,48 @@ function upload(file) {
  * TODO: Download the given file to server
  */
 function download(file) {
-    //TODO: Download the actual file contents (docx) from Firebase Storage and return the result
+    /* TODO: Download the actual file contents (docx)
+      from Firebase Storage and return the result */
 }
 
+exports.convertDocx = functions.storage.object()
+    .onFinalize(async (object) => {
 
-/**
- * TODO: Convert a given file from docx to html
- * TODO: Make this a triggered piece of code, possibly /triggers/conversion.js
- */
-function convert(file) {
-    //TODO: Download the actual file contents (docx)
-    //TODO: convert the file.    
-    convertToHtml(file)
-        .then((html) => {
-            console.log('Conversion result: \n', html)
-            //TODO: Upload converter html file back to Firebase Storage
-            // htmlRef.Upload(html) ...
-        }).catch(console.error);
-}
+        const contentType = object.contentType
+        const fileBucket = object.bucket
+        const filePath = object.name
 
-exports.convertDocx = functions.storage.object().onFinalize(async (object) => {
+        console.info(`Content type of ${object.name}: `, contentType)
+        //!object.name.endsWith('docx') || 
+        if (!contentType.includes('officedocument')) {
+            return console.error(`${object.name} is not a docx file!`)
+        }
 
-    const contentType = object.contentType
-    const fileBucket = object.bucket;
-    const filePath = object.name;
+        /* Download file from bucket. */
+        // TODO: move to download function; (rule of 3).
+        const bucket = admin.storage().bucket(fileBucket)
+        const fileName = path.basename(filePath)
+        const tempFilePath = path.join(os.tmpdir(), fileName)
 
-    console.log(`Content type of ${object.name}: `, contentType)
-    //!object.name.endsWith('docx') || 
-    if (!contentType.includes('officedocument')) {
-        return console.log(`${object.name} is not a docx file`)
-    }
+        const metadata = {
+            contentType: contentType,
+        }
 
-    console.log(`Starting conversion of ${object.name}...`);
+        // TODO: move to download function; (rule of 3).
+        await bucket.file(filePath)
+            .download({ destination: tempFilePath })
+            .then(() => console.log('Docx downloaded locally to', tempFilePath))
 
-    // Download file from bucket.
-    const bucket = admin.storage().bucket(fileBucket);
-    const fileName = path.basename(filePath);
-    const tempFilePath = path.join(os.tmpdir(), fileName);
+        /* Convert and receive where Html was saved */
+        var htmlFilePath = await convertToHtml(tempFilePath)
 
-    const metadata = {
-        contentType: contentType,
-    };
+        /* Re-upload after conversion */
+        // TODO: move to upload function; (SRP).
+        await bucket.upload(htmlFilePath, {
+            destination: htmlFilePath,
+            metadata: metadata
+        })
 
-    await bucket.file(filePath)
-        .download({ destination: tempFilePath });
-
-    console.log('Docx downloaded locally to', tempFilePath);
-
-    // const file = fs.readFileSync(tempFilePath);
-    // console.log(`File ${file} had been red by Node!`, file);
-
-    var html = await convertToHtml(tempFilePath)
-    console.log('html:', html);
-
-    //Write html to temp
-    fs.writeFileSync(`${tempFilePath}.html`, html);
-    console.log(`Html created at ${tempFilePath}.html`);
-
-    // const htmlFileName = `html_${fileName}`;
-    // const htmlFilePath = path.join(path.dirname(filePath), htmlFileName);
-
-    // //Re-upload after conversion
-    // await bucket.upload(tempFilePath, {
-    //     destination: htmlFilePath,
-    //     metadata: metadata
-    // })
-
-    // //Deletes temp file after conversion
-    // return fs.unlinkSync(tempFilePath);
-})
+        /* Deletes temp file after conversion */
+        return fs.unlinkSync(tempFilePath)
+    })

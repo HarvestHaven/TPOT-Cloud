@@ -26,10 +26,10 @@
     "child_process": "^1.0.2",
     "mammoth-colors": "^1.0.2",
     "jquery": "^3.4.1",
-    "mocha": "^6.2.2",
     "request-promise": "^4.2.5"
   },
   "devDependencies": {
+    "mocha": "^6.2.2",
     "firebase-functions-test": "^0.1.6"
   },
   "private": true

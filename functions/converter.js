@@ -22,19 +22,18 @@ const walk = require('domwalk')
 
 const getParentsUntil = require('./jQueryHelpers');
 
-async function convertFile(buffer, filePath = null) {
+async function convertFile(filePath = null) {
 
     if (!filePath) throw Error('A file path was not specified!')
 
+    let currentDirectory = dirname(filePath)
+    let styledHtmlPath = path.join(currentDirectory, basename(filePath).replace('docx', 'html'))
+
+    let buffer = await readFileAsync(filePath)
     let initialHtml = await convertFile2Html(buffer)
         .catch(console.error)
-    if (!initialHtml) throw new Error('No html came back from File2Html!')
-
     let mammothHtml = await convertWithMammoth_FromCLI(filePath)
         .catch(console.error)
-    if (!mammothHtml) throw new Error('No html came back from Mammoth!')
-
-    // mammothHtml = sanitize(mammothHtml)
 
     /* Bake Down CSS to File2Html Tag Data */
     initialHtml = await bakeCssToInlineStyles(initialHtml.css, initialHtml.html).catch(console.error)
@@ -45,11 +44,12 @@ async function convertFile(buffer, filePath = null) {
     /* Send Data back to Store as resolved promise data */
     if (finalHTML) {
         console.log('Conversion complete!')
-        let currentDirectory = dirname(filePath)
-        let styledHtmlPath = path.join(currentDirectory, basename(filePath).replace('docx', 'html'))
+
         fs.writeFileSync(styledHtmlPath, finalHTML)
         console.info(`Final result saved to ${styledHtmlPath}`)
     }
+
+    return styledHtmlPath
 }
 
 
@@ -65,6 +65,9 @@ const convertFile2Html = async (fileBuffer) => {
         fileBuffer,
         meta: { mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }
     })
+
+    if (!data.data.content) throw new Error('No html came back from File2Html!')
+    if (!data.data.styles) throw new Error('No css styles came back from File2Html!')
 
     return {
         css: data.data.styles,
@@ -123,11 +126,13 @@ const convertWithMammoth_FromCLI = async (filePath) => {
 
     mammothHtml = fs.readFileSync(htmlWritePath, { encoding: 'utf-8' }, (error, data) => {
         if (error) throw error
+        console.log('data: ', data)
     })
+
+    if (!mammothHtml) throw new Error('No html came back from Mammoth!')
 
     //Cleanup temp file
     fs.unlinkSync(htmlWritePath)
-
     return sanitize(mammothHtml);
 }
 
@@ -146,6 +151,22 @@ function runCommand(shellCommand) {
             resolve(true)
         });
     });
+}
+
+function readFileAsync(filePath) {
+    return new Promise((resolve, reject) => {
+        fs.readFile(filePath,
+            (error, buffer) => {
+                if (error) throw error
+
+                if (!buffer)
+                    throw new Error('Buffer could not be initialized!')
+                // console.log("file data:", data);
+
+                resolve(buffer)
+            }
+        )
+    })
 }
 
 ///////////////////////////////////////////////////
