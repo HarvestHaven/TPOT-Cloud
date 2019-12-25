@@ -1,4 +1,6 @@
 // 'use strict';
+const { runCommand } = require("./runCommand")
+const { readFileAsync } = require("./readFileAsync")
 
 // Injects the 'window' into 
 require('browser-env')()
@@ -9,12 +11,7 @@ const OOXMLReader = require('file2html-ooxml').default
 const fs = require('fs')
 const path = require('path')
 const { dirname, basename } = path
-const util = require('util')
-// const exec = util.promisify(require('child_process').exec)
-const { exec } = require('child_process');
 
-// Mammoth
-const mammoth = require('mammoth-colors')
 
 // Utilities
 const createNode = require('create-node')
@@ -25,21 +22,22 @@ const getParentsUntil = require('./jQueryHelpers');
 async function convertFile(filePath = null) {
 
     if (!filePath) throw Error('A file path was not specified!')
+    if (!filePath.endsWith('docx')) throw new Error(`Cannot convert files other than docx|doc!`)
 
     let currentDirectory = dirname(filePath)
     let styledHtmlPath = path.join(currentDirectory, basename(filePath).replace('docx', 'html'))
 
     let buffer = await readFileAsync(filePath)
-    let initialHtml = await convertFile2Html(buffer)
+    let initialDOM = await convertFile2Html(buffer)
         .catch(console.error)
     let mammothHtml = await convertWithMammoth_FromCLI(filePath)
         .catch(console.error)
 
     /* Bake Down CSS to File2Html Tag Data */
-    initialHtml = await bakeCssToInlineStyles(initialHtml.css, initialHtml.html).catch(console.error)
+    initialDOM = await bakeCssToInlineStyles(initialDOM.css, initialDOM.html).catch(console.error)
 
     /* Flatten Data */
-    let finalHTML = await flattenStyles(mammothHtml, initialHtml).catch(console.error)
+    let finalHTML = await flattenStyles(mammothHtml, initialDOM).catch(console.error)
 
     /* Send Data back to Store as resolved promise data */
     if (finalHTML) {
@@ -126,7 +124,7 @@ const convertWithMammoth_FromCLI = async (filePath) => {
 
     mammothHtml = fs.readFileSync(htmlWritePath, { encoding: 'utf-8' }, (error, data) => {
         if (error) throw error
-        console.log('data: ', data)
+        // console.log('data: ', data)
     })
 
     if (!mammothHtml) throw new Error('No html came back from Mammoth!')
@@ -134,39 +132,6 @@ const convertWithMammoth_FromCLI = async (filePath) => {
     //Cleanup temp file
     fs.unlinkSync(htmlWritePath)
     return sanitize(mammothHtml);
-}
-
-/**
- * Executes a shell command and return it as a Promise.
- * @param shellCommand {string}
- * @return {Promise<string>}
- */
-function runCommand(shellCommand) {
-    return new Promise((resolve, reject) => {
-        exec(shellCommand, (error, stdout, stderr) => {
-            // if (error) {
-            //     console.warn(error);
-            // }
-            // resolve(stdout ? stdout : stderr);
-            resolve(true)
-        });
-    });
-}
-
-function readFileAsync(filePath) {
-    return new Promise((resolve, reject) => {
-        fs.readFile(filePath,
-            (error, buffer) => {
-                if (error) throw error
-
-                if (!buffer)
-                    throw new Error('Buffer could not be initialized!')
-                // console.log("file data:", data);
-
-                resolve(buffer)
-            }
-        )
-    })
 }
 
 ///////////////////////////////////////////////////
