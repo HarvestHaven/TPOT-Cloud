@@ -1,7 +1,7 @@
 const fs = require('fs');
-function readFileAsync(filePath) {
+function readFileAsync(filePath, options = {}) {
     return new Promise((resolve) => {
-        fs.readFile(filePath, (error, buffer) => {
+        fs.readFile(filePath, options, (error, buffer) => {
             if (error)
                 throw error;
             if (!buffer)
@@ -11,4 +11,5 @@ function readFileAsync(filePath) {
         });
     });
 }
+
 exports.readFileAsync = readFileAsync;
