@@ -1,6 +1,6 @@
 // 'use strict';
-const { runCommand } = require("./runCommand")
-const { readFileAsync } = require("./readFileAsync")
+const { execCommand } = require("../shared/execCommand")
+const { readFileAsync } = require("../shared/readFileAsync")
 
 // Injects the 'window' into 
 require('browser-env')()
@@ -120,7 +120,7 @@ const convertWithMammoth_FromCLI = async (filePath) => {
 
     // Convert using Linux bash CLI & mammoth npm package.    
     let command = `mammoth ${filePath} --style-map ${stylePath} > ${htmlWritePath}`
-    await runCommand(command).catch(console.error)
+    await execCommand(command).catch(console.error)
 
     mammothHtml = fs.readFileSync(htmlWritePath, { encoding: 'utf-8' }, (error, data) => {
         if (error) throw error

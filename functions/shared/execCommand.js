@@ -4,7 +4,7 @@ const { exec } = require('child_process');
  * @param shellCommand {string}
  * @return {Promise<string>}
  */
-function runCommand(shellCommand) {
+function execCommand(shellCommand) {
     return new Promise((resolve) => {
         exec(shellCommand, () => {
             // if (error) {
@@ -15,4 +15,4 @@ function runCommand(shellCommand) {
         });
     });
 }
-exports.runCommand = runCommand;
+exports.execCommand = execCommand;

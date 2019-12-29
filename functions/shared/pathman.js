@@ -1,3 +1,6 @@
+/**
+ * A local path manager
+ */
 const path = require('path')
 
 function getPath(fileName = null, directory = "") {
