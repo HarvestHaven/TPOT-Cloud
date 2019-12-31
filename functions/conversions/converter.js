@@ -41,13 +41,13 @@ async function convertFile(filePath = null) {
 
     /* Send Data back to Store as resolved promise data */
     if (finalHTML) {
-        console.log('Conversion complete!')
+        console.log('Conversion complete!', !!finalHTML)
 
         fs.writeFileSync(styledHtmlPath, finalHTML)
-        console.info(`Final result saved to ${styledHtmlPath}`)
+        console.info(`Final result saved to ${styledHtmlPath} with ${fs.statSync(styledHtmlPath).size} bytes`)
     }
 
-    return styledHtmlPath
+    return finalHTML
 }
 
 
@@ -116,18 +116,18 @@ const convertWithMammoth_FromCLI = async (filePath) => {
         console.log(`Wrote down styles to ${stylePath}!`);
     })
 
-    let mammothHtml = null
-
     // Convert using Linux bash CLI & mammoth npm package.    
     let command = `mammoth ${filePath} --style-map ${stylePath} > ${htmlWritePath}`
     await execCommand(command).catch(console.error)
 
-    mammothHtml = fs.readFileSync(htmlWritePath, { encoding: 'utf-8' }, (error, data) => {
+
+    console.log(`Reading from mammoth write file ${htmlWritePath}`);
+    let mammothHtml = fs.readFileSync(htmlWritePath, { encoding: 'utf-8' }, (error, data) => {
+        console.log('mammoth html: ', !!data)
         if (error) throw error
-        // console.log('data: ', data)
     })
 
-    if (!mammothHtml) throw new Error('No html came back from Mammoth!')
+    if (!mammothHtml) throw new Error('No html came back from reading the Mammoth file!')
 
     //Cleanup temp file
     fs.unlinkSync(htmlWritePath)
