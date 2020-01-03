@@ -16,7 +16,7 @@ const db = admin.firestore()
 const path = require('path')
 const os = require('os')
 const fs = require('fs')
-const convertToHtml = require('./converter').convertFile
+const convertFileToHtml = require('./converter').convertFileToHtml
 
 exports.convertDocxToHtml = functions.storage.object()
     .onFinalize(async (object) => {
@@ -58,7 +58,7 @@ exports.convertDocxToHtml = functions.storage.object()
 
         /* Convert and receive where Html was saved */
         // let htmlFilePath = await convertToHtml(localFilePath)
-        await convertToHtml(localFilePath)
+        await convertFileToHtml(localFilePath)
             .then(async (html) => {
                 console.info('Calling uploadAsSession()', !!html)
                 // console.log(html);

@@ -432,5 +432,5 @@ const flattenStyles = async (baseDom, augDom) => {
 }
 
 module.exports = {
-    convertFile
+    convertFileToHtml: convertFile
 }
