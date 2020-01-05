@@ -13,6 +13,7 @@ const path = require('path')
 const os = require('os')
 const fs = require('fs')
 const convertToHtml = require('./converter').convertFile
+const { sizeof } = require('./converter')
 
 exports.convertDocxToHtml = functions.storage.object()
     .onFinalize(async (object) => {
@@ -48,7 +49,7 @@ exports.convertDocxToHtml = functions.storage.object()
         // TODO: move to download function; (rule of 3).
         await bucket.file(filePath)
             .download({ destination: localFilePath })
-            .then(() => console.log('Docx downloaded locally to', localFilePath))
+            .then(() => console.log(`Docx downloaded locally to server at ${localFilePath}`))
 
         /* Convert and receive where Html was saved */
         let htmlFilePath = await convertToHtml(localFilePath)
@@ -62,3 +63,4 @@ exports.convertDocxToHtml = functions.storage.object()
         /* Delete temp files after conversion */
         return fs.unlinkSync(localFilePath)
     })
+

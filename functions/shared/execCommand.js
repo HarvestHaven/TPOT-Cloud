@@ -6,11 +6,11 @@ const { exec } = require('child_process');
  */
 function execCommand(shellCommand) {
     return new Promise((resolve) => {
-        exec(shellCommand, () => {
-            // if (error) {
-            //     console.warn(error);
-            // }
-            // resolve(stdout ? stdout : stderr);
+        exec(shellCommand, (error, stdout, stderr) => {
+            if (error) {
+                console.warn(error);
+            }
+            resolve(stdout ? stdout : stderr);
             resolve(true);
         });
     });

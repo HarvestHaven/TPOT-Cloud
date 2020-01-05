@@ -2,12 +2,13 @@
 const { execCommand } = require("../shared/execCommand")
 const { readFileAsync } = require("../shared/readFileAsync")
 
-// Injects the 'window' into 
+// Injects the 'window' as a global variable
 require('browser-env')()
 
 // File2Html
 const file2html = require('file2html')
 const OOXMLReader = require('file2html-ooxml').default
+const mammoth = require('mammoth')
 const fs = require('fs')
 const path = require('path')
 const { dirname, basename } = path
@@ -30,21 +31,26 @@ async function convertFile(filePath = null) {
     let buffer = await readFileAsync(filePath)
     let initialDOM = await convertFile2Html(buffer)
         .catch(console.error)
-    let mammothHtml = await convertWithMammoth_FromCLI(filePath)
+    // let mammothHtml = await convertWithMammoth_FromCLI(filePath)
+    //     .catch(console.error)
+    let mammothHtml = await convertMammothFromFile(filePath)
         .catch(console.error)
+    console.log('mammoth returned: ', mammothHtml);
 
     /* Bake Down CSS to File2Html Tag Data */
     initialDOM = await bakeCssToInlineStyles(initialDOM.css, initialDOM.html).catch(console.error)
 
     /* Flatten Data */
     let finalHTML = await flattenStyles(mammothHtml, initialDOM).catch(console.error)
+    finalHTML = sanitize(finalHTML)
+    console.log('Final Html: ', finalHTML)
 
     /* Send Data back to Store as resolved promise data */
     if (finalHTML) {
         console.log('Conversion complete!')
 
         fs.writeFileSync(styledHtmlPath, finalHTML)
-        console.info(`Final result saved to ${styledHtmlPath}`)
+        console.info(`Final result saved to ${styledHtmlPath} (${sizeof(styledHtmlPath)}} bytes)`)
     }
 
     return styledHtmlPath
@@ -94,6 +100,40 @@ const mammothOptions = {
     ]
 };
 
+
+const convertMammoth = async (buffer) => {
+
+    console.log('mammoth options: ', mammothOptions, buffer);
+    const html = await mammoth.convertToHtml({
+        arrayBuffer: buffer
+    }, mammothOptions)
+        .catch(console.error)
+
+    if (!html)
+        throw new Error('Mammoth did not produce any html!')
+
+    console.info('Now, carraige returns');
+
+    // : Fix Carraige Returns
+    let sanitizedHTML = sanitize(html)
+    console.log('sanitized HTML: ', sanitizedHTML);
+    // Return Result
+    return sanitizedHTML
+
+}
+
+const convertMammothFromFile = async (filePath) => {
+    console.log(`Mammoth running conversion of ${filePath} to html...`);
+    const html = await mammoth.convertToHtml({ path: filePath }, mammothOptions)
+    // .then(function (result) {
+    //     let messages = result.messages
+    //     messages && console.log('Messages from mammoth:', messages)
+    // })
+    // .done()
+    console.log("yay, html!", !!html);
+    return html.value;
+}
+
 /* Fix Carraige Returns */
 const sanitize = (html) => html.replace(/[\<]+[br]+[\s]?[\/]+[\>]+[\s]?[\<]+[br]+[\s]?[\/]+[\>]/g, '<p/><p>')
 
@@ -113,7 +153,7 @@ const convertWithMammoth_FromCLI = async (filePath) => {
 
     // Write the style map down.
     await fs.writeFile(stylePath, mammothOptions.styleMap.toString(), () => {
-        console.log(`Wrote down styles to ${stylePath}!`);
+        console.log(`Wrote down styles to ${stylePath} (${sizeof(stylePath)} bytes)!`);
     })
 
     let mammothHtml = null
@@ -431,6 +471,10 @@ const flattenStyles = async (baseDom, augDom) => {
     }
 }
 
+/** Helpers */
+const sizeof = (filePath) => fs.statSync(filePath).size;
+
 module.exports = {
-    convertFile
+    convertFile,
+    sizeof
 }
