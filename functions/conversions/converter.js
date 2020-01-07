@@ -133,9 +133,6 @@ const convertMammothFromFile = async (filePath) => {
     return sanitize(html.value);
 }
 
-/* Fix Carraige Returns */
-const sanitize = (html) => html.replace(/[\<]+[br]+[\s]?[\/]+[\>]+[\s]?[\<]+[br]+[\s]?[\/]+[\>]/g, '<p/><p>')
-
 /**
  * Convert file from local file system's CLI (must be Linux, we don't do Windows [ew]) 
  */
@@ -472,6 +469,9 @@ const flattenStyles = async (baseDom, augDom) => {
 
 /** Helpers */
 const sizeof = (filePath) => fs.statSync(filePath).size;
+
+/* Fix Carraige Returns */
+const sanitize = (html) => html.replace(/[\<]+[br]+[\s]?[\/]+[\>]+[\s]?[\<]+[br]+[\s]?[\/]+[\>]/g, '<p/><p>')
 
 module.exports = {
     convertFile,
