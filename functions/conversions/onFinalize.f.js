@@ -6,7 +6,7 @@ https://firebase.google.com/docs/functions/write-firebase-functions */
 
 const admin = require('firebase-admin');
 const functions = require('firebase-functions')
-admin.initializeApp();
+// admin.initializeApp();
 
 /** Local IO */
 const path = require('path')
@@ -15,7 +15,9 @@ const fs = require('fs')
 const convertToHtml = require('./converter').convertFile
 const { sizeof } = require('./converter')
 
-exports.convertDocxToHtml = functions.storage.object()
+export default functions
+    .storage
+    .object()
     .onFinalize(async (object) => {
 
         const contentType = object.contentType
@@ -25,9 +27,9 @@ exports.convertDocxToHtml = functions.storage.object()
         const fileName = path.basename(filePath)
         const localFilePath = path.join(os.tmpdir(), fileName)
 
-        if (!contentType.includes('officedocument') || !object.name.endsWith('docx')) {
+        if (!contentType.includes('officedocument') || !object.name.endsWith('.docx')) {
             // IDEA: find a way to filter only DOCX for this trigger - save function calls!
-            return // console.info(`${object.name} is not a docx file!  Conversion aborted.`)
+            return null // console.info(`${object.name} is not a docx file!  Conversion aborted.`)
         }
 
         // console.info(`Content type of ${object.name}: `, contentType)
@@ -36,21 +38,28 @@ exports.convertDocxToHtml = functions.storage.object()
             contentType: contentType,
         }
 
-        // TODO: move to download function; (rule of 3).
         await bucket.file(filePath)
             .download({ destination: localFilePath })
             .then(() => console.log(`Docx downloaded locally to server at ${localFilePath}`))
 
         /* Convert and receive where Html was saved */
         let htmlFilePath = await convertToHtml(localFilePath)
+            .catch((error) => {
+                console.error(error);
+                return null;
+            })
+            
+        if (!htmlFilePath)
+            return null;
 
-        // console.log('Re-Uploading temp html file');
+        console.log('Re-Uploading temp html file');
         await bucket.upload(htmlFilePath, {
             destination: htmlFilePath,
             metadata: metadata
         })
 
         /* Delete temp files after conversion */
+        console.log('Cleaning up');
         fs.unlinkSync(htmlFilePath)
         return fs.unlinkSync(localFilePath)
     })

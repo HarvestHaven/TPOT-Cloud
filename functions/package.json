@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "browser-env": "^3.3.0",
+    "camelcase": "^5.3.1",
     "chai": "^4.2.0",
     "child-process-promise": "^2.2.1",
     "child_process": "^1.0.2",
@@ -22,10 +23,12 @@
     "file2html": "^0.2.0",
     "file2html-ooxml": "^0.2.2",
     "filereader": "^0.10.3",
-    "firebase-admin": "^8.6.0",
+    "firebase-admin": "^8.9.0",
+    "firebase-function-tools": "^1.1.1",
     "firebase-functions": "^3.3.0",
     "firebase-tools": "^7.11.0",
     "firestore": "^1.1.6",
+    "glob": "^7.1.6",
     "jquery": "^3.4.1",
     "mammoth": "^1.4.9",
     "mammoth-colors": "^1.0.2",
@@ -33,7 +36,7 @@
   },
   "devDependencies": {
     "firebase-functions-test": "^0.1.7",
-    "mocha": "^6.2.2"
+    "mocha": "^7.0.0"
   },
   "private": true
 }

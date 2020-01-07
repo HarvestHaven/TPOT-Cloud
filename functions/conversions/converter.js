@@ -23,10 +23,10 @@ const getParentsUntil = require('./jQueryHelpers');
 async function convertFile(filePath = null) {
 
     if (!filePath) throw Error('A file path was not specified!')
-    if (!filePath.endsWith('docx')) throw new Error(`Cannot convert files other than docx|doc!`)
+    if (!filePath.endsWith('.docx')) throw new Error(`Cannot convert files other than *.docx | *.doc!`)
 
     let currentDirectory = dirname(filePath)
-    let styledHtmlPath = path.join(currentDirectory, basename(filePath).replace('docx', 'html'))
+    let styledHtmlPath = path.join(currentDirectory, basename(filePath).replace('.docx', '.html'))
 
     let buffer = await readFileAsync(filePath)
     let initialDOM = await convertFile2Html(buffer)
@@ -41,9 +41,10 @@ async function convertFile(filePath = null) {
     initialDOM = await bakeCssToInlineStyles(initialDOM.css, initialDOM.html).catch(console.error)
 
     /* Flatten Data */
-    let finalHTML = await flattenStyles(mammothHtml, initialDOM).catch(console.error)    
-    console.log('Final Html: ', finalHTML)
+    let finalHTML = await flattenStyles(mammothHtml, initialDOM).catch(console.error)
+    if (!finalHTML) throw new Error('Conversion FAILED - document may be incorrectly formatted!')
 
+    console.log('Final Html: ', finalHTML)
     /* Send Data back to Store as resolved promise data */
     if (finalHTML) {
         console.log('Conversion complete!')
@@ -143,7 +144,7 @@ const convertWithMammoth_FromCLI = async (filePath) => {
     console.log(`Directory for CLI work: ${currentDirectory}`);
 
     let fileName = basename(filePath)
-    let htmlFileName = fileName.replace("docx", "html")
+    let htmlFileName = fileName.replace(".docx", ".html")
     let htmlWritePath = path.join(currentDirectory, htmlFileName);
     let stylePath = path.join(currentDirectory, styleFile)
 
