@@ -35,14 +35,13 @@ async function convertFile(filePath = null) {
     //     .catch(console.error)
     let mammothHtml = await convertMammothFromFile(filePath)
         .catch(console.error)
-    console.log('mammoth returned: ', mammothHtml);
+    // console.log('mammoth returned: ', mammothHtml);
 
     /* Bake Down CSS to File2Html Tag Data */
     initialDOM = await bakeCssToInlineStyles(initialDOM.css, initialDOM.html).catch(console.error)
 
     /* Flatten Data */
-    let finalHTML = await flattenStyles(mammothHtml, initialDOM).catch(console.error)
-    finalHTML = sanitize(finalHTML)
+    let finalHTML = await flattenStyles(mammothHtml, initialDOM).catch(console.error)    
     console.log('Final Html: ', finalHTML)
 
     /* Send Data back to Store as resolved promise data */
@@ -131,7 +130,7 @@ const convertMammothFromFile = async (filePath) => {
     // })
     // .done()
     console.log("yay, html!", !!html);
-    return html.value;
+    return sanitize(html.value);
 }
 
 /* Fix Carraige Returns */
@@ -476,5 +475,6 @@ const sizeof = (filePath) => fs.statSync(filePath).size;
 
 module.exports = {
     convertFile,
-    sizeof
+    sizeof,
+    sanitize
 }
