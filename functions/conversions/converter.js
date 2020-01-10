@@ -26,7 +26,7 @@ async function convertFile(filePath = null) {
     if (!filePath.endsWith('.docx')) throw new Error(`Cannot convert files other than *.docx | *.doc!`)
 
     let currentDirectory = dirname(filePath)
-    let styledHtmlPath = path.join(currentDirectory, basename(filePath).replace('.docx', '.html'))
+    let htmlFilePath = path.join(currentDirectory, basename(filePath).replace('.docx', '.html'))
 
     let buffer = await readFileAsync(filePath)
     let initialDOM = await convertFile2Html(buffer)
@@ -49,11 +49,12 @@ async function convertFile(filePath = null) {
     if (finalHTML) {
         console.log('Conversion complete!')
 
-        fs.writeFileSync(styledHtmlPath, finalHTML)
-        console.info(`Final result saved to ${styledHtmlPath} (${sizeof(styledHtmlPath)}} bytes)`)
+        fs.writeFileSync(htmlFilePath, finalHTML)
+        console.info(`Final result saved to ${htmlFilePath} (${sizeof(htmlFilePath)}} bytes)`)
     }
 
-    return styledHtmlPath
+
+    return { htmlFilePath, html }
 }
 
 

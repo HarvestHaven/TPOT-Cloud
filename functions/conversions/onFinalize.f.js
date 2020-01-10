@@ -3,10 +3,9 @@
 Firebase
 Writing functions:
 https://firebase.google.com/docs/functions/write-firebase-functions */
-
 const admin = require('firebase-admin');
 const functions = require('firebase-functions')
-// admin.initializeApp();
+var database = admin.database()
 
 /** Local IO */
 const path = require('path')
@@ -43,14 +42,22 @@ export default functions
             .then(() => console.log(`Docx downloaded locally to server at ${localFilePath}`))
 
         /* Convert and receive where Html was saved */
-        let htmlFilePath = await convertToHtml(localFilePath)
+        let { htmlFilePath, html } = await convertToHtml(localFilePath)
             .catch((error) => {
                 console.error(error);
                 return null;
             })
-            
+
         if (!htmlFilePath)
             return null;
+
+        database
+            // .ref('test/' + filePath)
+            .ref()
+            .set({
+                html,
+                author: "Michael Preston"
+            })
 
         console.log('Re-Uploading temp html file');
         await bucket.upload(htmlFilePath, {
