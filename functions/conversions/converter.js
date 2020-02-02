@@ -41,15 +41,15 @@ async function convertFile(filePath = null) {
     initialDOM = await bakeCssToInlineStyles(initialDOM.css, initialDOM.html).catch(console.error)
 
     /* Flatten Data */
-    let finalHTML = await flattenStyles(mammothHtml, initialDOM).catch(console.error)
-    if (!finalHTML) throw new Error('Conversion FAILED - document may be incorrectly formatted!')
+    let html = await flattenStyles(mammothHtml, initialDOM).catch(console.error)
+    if (!html) throw new Error('Conversion FAILED - document may be incorrectly formatted!')
 
-    console.log('Final Html: ', finalHTML)
+    console.log('Final Html: ', html)
     /* Send Data back to Store as resolved promise data */
-    if (finalHTML) {
+    if (html) {
         console.log('Conversion complete!')
 
-        fs.writeFileSync(htmlFilePath, finalHTML)
+        fs.writeFileSync(htmlFilePath, html)
         console.info(`Final result saved to ${htmlFilePath} (${sizeof(htmlFilePath)}} bytes)`)
     }
 

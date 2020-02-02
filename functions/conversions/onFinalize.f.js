@@ -5,14 +5,14 @@ Writing functions:
 https://firebase.google.com/docs/functions/write-firebase-functions */
 const admin = require('firebase-admin');
 const functions = require('firebase-functions')
-var database = admin.database()
+// var database = admin.database()
 
 /** Local IO */
 const path = require('path')
 const os = require('os')
 const fs = require('fs')
 const convertToHtml = require('./converter').convertFile
-const { sizeof } = require('./converter')
+// const { sizeof } = require('./converter')
 
 export default functions
     .storage
@@ -51,13 +51,27 @@ export default functions
         if (!htmlFilePath)
             return null;
 
-        database
-            // .ref('test/' + filePath)
-            .ref()
-            .set({
-                html,
-                author: "Michael Preston"
+        let paper = {
+            html,
+            fileName,
+            // slug, //TODO: find this logic in other code.
+            date_modified: Date.now(),
+            date_uploaded: Date.now(),
+            status: 'in-progress',
+            author: "Michael Preston"
+        }
+
+        // database
+        //     .ref(slug)
+        //     .set(paper)
+        //     .catch(console.error)
+
+        axios.post('https://site-scan-beta.herokuapp.com/api/checkout/update', paper)
+            .then((response) => {
+                console.log(`status code: ${response.statusCode}`);
             })
+            .catch(console.error)
+
 
         console.log('Re-Uploading temp html file');
         await bucket.upload(htmlFilePath, {
